@@ -3,7 +3,7 @@ node_modules/
 
 # Environment variables
 .env
-.env.*
+!.env.example
 
 # Build files
 dist/
@@ -20,6 +20,7 @@ build/
 
 # Backend
 backend/node_modules/
+backend/inventory.db
 
 # Frontend
 frontend/node_modules/

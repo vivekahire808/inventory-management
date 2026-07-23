@@ -38,7 +38,8 @@ export const SocketProvider = ({ children }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
-    const socketInstance = io('http://localhost:5000', {
+    const socketUrl = import.meta.env.VITE_API_URL || 'https://inventory-management-2-ux7n.onrender.com';
+    const socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000

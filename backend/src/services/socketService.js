@@ -3,9 +3,13 @@ const { Server } = require('socket.io');
 let io = null;
 
 function initSocket(server) {
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL, 'http://localhost:5173']
+    : '*';
+
   io = new Server(server, {
     cors: {
-      origin: '*',
+      origin: allowedOrigins,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
     }
   });

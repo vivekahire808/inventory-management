@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -25,7 +27,7 @@ export const approveReorderOTP = (id, otpCode) => api.post(`/reorders/${id}/appr
 
 // Audit Logs & Exports
 export const getAuditLogs = () => api.get('/audit-logs');
-export const exportProductsCSVUrl = '/api/export/products/csv';
-export const exportReordersCSVUrl = '/api/export/reorders/csv';
+export const exportProductsCSVUrl = `${API_BASE_URL}/export/products/csv`;
+export const exportReordersCSVUrl = `${API_BASE_URL}/export/reorders/csv`;
 
 export default api;
