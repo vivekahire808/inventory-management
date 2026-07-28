@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Bell, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 
-export default function NotificationToast({ onNavigateToReorders }) {
+export default function NotificationToast({ onNavigateToAlerts }) {
   const { activeToast, dismissToast } = useSocket();
 
   useEffect(() => {
@@ -46,11 +46,11 @@ export default function NotificationToast({ onNavigateToReorders }) {
                 <button
                   onClick={() => {
                     dismissToast();
-                    if (onNavigateToReorders) onNavigateToReorders();
+                    if (onNavigateToAlerts) onNavigateToAlerts();
                   }}
                   className="text-xs bg-indigo-600/80 hover:bg-indigo-600 text-white font-medium px-2.5 py-1 rounded transition-colors"
                 >
-                  View Reorders →
+                  View Alerts →
                 </button>
               </div>
             )}

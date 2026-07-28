@@ -6,7 +6,6 @@ import NotificationToast from './components/NotificationToast';
 import InventoryPage from './pages/InventoryPage';
 import VendorsPage from './pages/VendorsPage';
 import ReorderAlertsPage from './pages/ReorderAlertsPage';
-import ReordersPage from './pages/ReordersPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import { SocketProvider } from './context/SocketContext';
@@ -53,18 +52,15 @@ function DashboardContent() {
 
   const lowStockCount = products.filter(p => p.available_quantity < p.low_stock_threshold).length;
   const reorderAlertCount = products.filter(p => p.available_quantity <= (p.threshold_limit ?? p.low_stock_threshold)).length;
-  const pendingApprovalCount = reorders.filter(r => r.reorder_status === 'PENDING_APPROVAL').length;
-
   return (
     <div className="app-layout">
       {/* Toast Notifications */}
-      <NotificationToast onNavigateToReorders={() => setActiveTab('reorders')} />
+      <NotificationToast onNavigateToAlerts={() => setActiveTab('reorder-alerts')} />
 
       {/* Fixed Left Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        pendingApprovalCount={pendingApprovalCount}
         lowStockCount={lowStockCount}
         reorderAlertCount={reorderAlertCount}
       />
@@ -118,12 +114,8 @@ function DashboardContent() {
             />
           )}
 
-          {activeTab === 'reorders' && (
-            <ReordersPage reorders={reorders} fetchReorders={fetchReordersData} />
-          )}
-
           {activeTab === 'notifications' && (
-            <NotificationsPage onNavigateToReorders={() => setActiveTab('reorders')} />
+            <NotificationsPage />
           )}
 
           {activeTab === 'audit' && (

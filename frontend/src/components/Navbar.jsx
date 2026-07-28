@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Package, Download, Bell, Volume2, VolumeX } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
-import { exportProductsCSVUrl, exportReordersCSVUrl } from '../services/api';
+import { exportProductsCSVUrl } from '../services/api';
 
 export default function Navbar({ activeTab, setActiveTab }) {
   const { isConnected, unreadCount, soundEnabled, toggleSound } = useSocket();
@@ -12,7 +12,6 @@ export default function Navbar({ activeTab, setActiveTab }) {
     inventory: 'Inventory Dashboard',
     vendors: 'Vendor Management',
     'reorder-alerts': 'Reorder Alerts',
-    reorders: 'Supplier Reorders',
     notifications: 'Notifications',
     audit: 'Audit Logs'
   };
@@ -64,13 +63,6 @@ export default function Navbar({ activeTab, setActiveTab }) {
                 onMouseOut={e => e.target.style.background = 'transparent'}
               >
                 📥 Export Inventory CSV
-              </a>
-              <a href={exportReordersCSVUrl} download onClick={() => setShowExportMenu(false)}
-                style={{ display: 'block', padding: '8px 12px', fontSize: 12, color: 'var(--text-primary)', textDecoration: 'none', borderRadius: 6 }}
-                onMouseOver={e => e.target.style.background = 'rgba(255,255,255,0.06)'}
-                onMouseOut={e => e.target.style.background = 'transparent'}
-              >
-                📥 Export Reorders CSV
               </a>
             </div>
           )}

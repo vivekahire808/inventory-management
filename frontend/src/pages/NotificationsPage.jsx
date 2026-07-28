@@ -1,8 +1,8 @@
 import React from 'react';
-import { Bell, AlertTriangle, CheckCircle, Info, Trash2, CheckCheck, ArrowRight } from 'lucide-react';
+import { Bell, AlertTriangle, CheckCircle, Info, Trash2, CheckCheck } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 
-export default function NotificationsPage({ onNavigateToReorders }) {
+export default function NotificationsPage() {
   const { notifications, markAllRead, clearNotifications } = useSocket();
 
   return (
@@ -82,13 +82,8 @@ export default function NotificationsPage({ onNavigateToReorders }) {
                       <p className="text-xs text-slate-300 mt-1 leading-relaxed">{item.message}</p>
 
                       {item.reorder && (
-                        <div className="mt-2 text-xs">
-                          <button
-                            onClick={onNavigateToReorders}
-                            className="text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1 hover:underline"
-                          >
-                            Track Reorder #{item.reorder.id} Status ({item.reorder.reorder_status}) <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="mt-2 text-xs text-slate-400">
+                          Reorder #{item.reorder.id} Status ({item.reorder.reorder_status})
                         </div>
                       )}
                     </div>

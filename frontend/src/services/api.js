@@ -36,6 +36,5 @@ export const approveReorderOTP = (id, otpCode) => api.post(`/reorders/${id}/appr
 // Audit Logs & Exports
 export const getAuditLogs = () => api.get('/audit-logs');
 export const exportProductsCSVUrl = `${API_BASE_URL}/export/products/csv`;
-export const exportReordersCSVUrl = `${API_BASE_URL}/export/reorders/csv`;
 
 export default api;
