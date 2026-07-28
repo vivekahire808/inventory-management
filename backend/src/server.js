@@ -8,6 +8,7 @@ const productRoutes = require('./routes/productRoutes');
 const reorderRoutes = require('./routes/reorderRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const exportRoutes = require('./routes/exportRoutes');
+const vendorRoutes = require('./routes/vendorRoutes');
 const rateLimiter = require('./middleware/rateLimiter');
 const { initSocket } = require('./services/socketService');
 const { initQueue } = require('./services/queueService');
@@ -48,6 +49,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/reorders', reorderRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

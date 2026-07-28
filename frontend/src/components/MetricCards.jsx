@@ -1,16 +1,18 @@
 import React from 'react';
 
-export default function MetricCards({ products = [], reorders = [] }) {
+export default function MetricCards({ products = [], reorders = [], vendors = [] }) {
   const totalProducts = products.length;
-  const lowStockProducts = products.filter(p => p.available_quantity < p.low_stock_threshold).length;
-  const pendingApprovals = reorders.filter(r => r.reorder_status === 'PENDING_APPROVAL').length;
-  const totalReorderValue = reorders.reduce((sum, r) => sum + parseFloat(r.total_cost || 0), 0);
+  const reorderAlertsCount = products.filter(
+    (p) => p.available_quantity <= (p.threshold_limit ?? p.low_stock_threshold)
+  ).length;
+  const pendingApprovals = reorders.filter((r) => r.reorder_status === 'PENDING_APPROVAL').length;
+  const totalVendors = vendors.length;
 
   const metrics = [
-    { label: 'Total Products', value: totalProducts, sub: `${totalProducts - lowStockProducts} healthy` },
-    { label: 'Low Stock Alerts', value: lowStockProducts, sub: lowStockProducts > 0 ? 'Action needed' : 'All good' },
-    { label: 'Pending Approvals', value: pendingApprovals, sub: 'OTP required' },
-    { label: 'Reorder Value', value: `₹${totalReorderValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, sub: `${reorders.length} orders` }
+    { label: 'Total Products', value: totalProducts, sub: `${totalProducts - reorderAlertsCount} stock healthy` },
+    { label: 'Reorder Alerts', value: reorderAlertsCount, sub: reorderAlertsCount > 0 ? 'Stock ≤ Threshold' : 'Stock healthy' },
+    { label: 'Total Vendors', value: totalVendors, sub: `${totalVendors} active suppliers` },
+    { label: 'Pending Approvals', value: pendingApprovals, sub: 'OTP required' }
   ];
 
   return (

@@ -1,23 +1,31 @@
-import React, { useState } from 'react';
-import { X, Layers, Plus, Minus, AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Layers, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function StockUpdateModal({ isOpen, onClose, onUpdateStock, product }) {
   const [adjustMode, setAdjustMode] = useState('set'); // 'set' or 'delta'
-  const [quantityValue, setQuantityValue] = useState(product ? product.available_quantity : 0);
-  const [deltaValue, setDeltaValue] = useState(-5);
+  const [quantityValue, setQuantityValue] = useState(0);
+  const [deltaValue, setDeltaValue] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (product) {
+      setQuantityValue(product.available_quantity);
+      setDeltaValue(10);
+    }
+    setError('');
+  }, [product, isOpen]);
 
   if (!isOpen || !product) return null;
 
   const currentAvailable = product.available_quantity;
-  const threshold = product.low_stock_threshold;
+  const threshold = product.threshold_limit ?? product.low_stock_threshold ?? 5;
 
-  const calculatedNewStock = adjustMode === 'set' 
-    ? parseInt(quantityValue || 0, 10) 
+  const calculatedNewStock = adjustMode === 'set'
+    ? parseInt(quantityValue || 0, 10)
     : currentAvailable + parseInt(deltaValue || 0, 10);
 
-  const isWillBeLowStock = calculatedNewStock < threshold;
+  const isWillBeLowStock = calculatedNewStock <= threshold;
 
   const handleStockSubmit = async (e) => {
     e.preventDefault();
@@ -43,150 +51,158 @@ export default function StockUpdateModal({ isOpen, onClose, onUpdateStock, produ
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fadeIn">
-      <div className="glass-modal max-w-md w-full p-6 shadow-2xl relative">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400">
-              <Layers className="w-5 h-5" />
+        {/* Modal Header */}
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ padding: '6px 8px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <Layers size={18} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-100 font-heading">Update Available Stock</h3>
-              <p className="text-xs text-slate-400 font-mono">{product.name} ({product.sku})</p>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Update Stock Quantity</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                {product.name} ({product.sku})
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <button onClick={onClose} className="btn btn-ghost"><X size={18} /></button>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium">
-            {error}
-          </div>
-        )}
+        <form onSubmit={handleStockSubmit}>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {error && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: 12 }}>
+                {error}
+              </div>
+            )}
 
-        <form onSubmit={handleStockSubmit} className="space-y-4">
-          
-          {/* Toggle Mode */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setAdjustMode('set')}
-              className={`py-2 rounded-lg transition-all ${
-                adjustMode === 'set' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Set Exact Quantity
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdjustMode('delta')}
-              className={`py-2 rounded-lg transition-all ${
-                adjustMode === 'delta' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Adjust (+ / - Delta)
-            </button>
-          </div>
+            {/* Toggle Mode */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: 'var(--bg-input)', padding: 4, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => setAdjustMode('set')}
+                className={`btn btn-sm ${adjustMode === 'set' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ justifyContent: 'center' }}
+              >
+                Set Exact Quantity
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdjustMode('delta')}
+                className={`btn btn-sm ${adjustMode === 'delta' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ justifyContent: 'center' }}
+              >
+                Adjust (+ / - Delta)
+              </button>
+            </div>
 
-          {/* Current Info */}
-          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex justify-between items-center text-xs">
-            <div>
-              <span className="text-slate-400">Current Stock:</span>
-              <span className="font-bold font-mono text-slate-100 ml-2 text-sm">{currentAvailable}</span>
-            </div>
-            <div>
-              <span className="text-slate-400">Low Stock Limit:</span>
-              <span className="font-bold font-mono text-amber-400 ml-2 text-sm">{threshold}</span>
-            </div>
-          </div>
-
-          {adjustMode === 'set' ? (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">New Available Quantity</label>
-              <input
-                type="number"
-                min="0"
-                className="form-input text-lg font-bold font-mono"
-                value={quantityValue}
-                onChange={(e) => setQuantityValue(e.target.value)}
-                required
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Adjustment Quantity (+ Add / - Reduce)</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeltaValue(-5)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-rose-400 font-mono font-bold text-xs"
-                >
-                  -5
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeltaValue(-1)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-rose-400 font-mono font-bold text-xs"
-                >
-                  -1
-                </button>
-                <input
-                  type="number"
-                  className="form-input font-mono font-bold text-center"
-                  value={deltaValue}
-                  onChange={(e) => setDeltaValue(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setDeltaValue(1)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-emerald-400 font-mono font-bold text-xs"
-                >
-                  +1
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeltaValue(10)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-emerald-400 font-mono font-bold text-xs"
-                >
-                  +10
-                </button>
+            {/* Current Info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--border-color)', fontSize: 12 }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Current Stock: </span>
+                <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>{currentAvailable} units</span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Reorder Threshold: </span>
+                <span style={{ fontWeight: 700, fontFamily: 'monospace', color: '#fbbf24' }}>{threshold} units</span>
               </div>
             </div>
-          )}
 
-          {/* Forecasted Result Banner */}
-          <div className={`p-3 rounded-lg border text-xs flex items-center gap-2.5 ${
-            isWillBeLowStock 
-              ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' 
-              : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-          }`}>
-            {isWillBeLowStock ? <AlertTriangle className="w-5 h-5 flex-shrink-0 animate-bounce" /> : <Layers className="w-5 h-5 flex-shrink-0" />}
-            <div>
-              <p className="font-semibold">
-                Forecasted Stock: <span className="font-mono text-sm font-bold">{calculatedNewStock} units</span>
-              </p>
-              <p className="text-[11px] opacity-90">
-                {isWillBeLowStock
-                  ? '⚠️ Will trigger automated low-stock detection & supplier reorder job.'
-                  : 'Stock level is healthy above threshold.'}
-              </p>
+            {adjustMode === 'set' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label className="form-label">New Available Stock Quantity *</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace' }}
+                  value={quantityValue}
+                  onChange={(e) => setQuantityValue(e.target.value)}
+                  required
+                />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label">Adjustment Delta (+ Restock / - Decrease) *</label>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDeltaValue(-5)}
+                    className="btn btn-outline btn-sm"
+                    style={{ color: '#f87171', fontFamily: 'monospace' }}
+                  >
+                    -5
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeltaValue(-1)}
+                    className="btn btn-outline btn-sm"
+                    style={{ color: '#f87171', fontFamily: 'monospace' }}
+                  >
+                    -1
+                  </button>
+                  <input
+                    type="number"
+                    className="form-input"
+                    style={{ textAlign: 'center', fontWeight: 700, fontFamily: 'monospace' }}
+                    value={deltaValue}
+                    onChange={(e) => setDeltaValue(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDeltaValue(1)}
+                    className="btn btn-outline btn-sm"
+                    style={{ color: '#4ade80', fontFamily: 'monospace' }}
+                  >
+                    +1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeltaValue(10)}
+                    className="btn btn-outline btn-sm"
+                    style={{ color: '#4ade80', fontFamily: 'monospace' }}
+                  >
+                    +10
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Forecast Banner */}
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: isWillBeLowStock ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)',
+              border: `1px solid ${isWillBeLowStock ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.3)'}`,
+              color: isWillBeLowStock ? '#fbbf24' : '#4ade80'
+            }}>
+              {isWillBeLowStock ? <AlertTriangle size={18} style={{ flexShrink: 0 }} /> : <Layers size={18} style={{ flexShrink: 0 }} />}
+              <div>
+                <p style={{ fontWeight: 700 }}>
+                  New Stock Forecast: <span style={{ fontFamily: 'monospace' }}>{calculatedNewStock} units</span>
+                </p>
+                <p style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
+                  {isWillBeLowStock
+                    ? '⚠️ Stock quantity ≤ threshold. Product will show up in the Reorder Alerts section.'
+                    : '✅ Stock level healthy (> threshold limit). Product will be cleared from Reorder Alerts list.'}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <button type="button" onClick={onClose} className="btn-secondary text-xs">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn-primary text-xs">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Stock Update'}
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">Cancel</button>
+            <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
+              {loading ? <Loader2 size={14} className="animate-spin" /> : 'Confirm Stock Update'}
             </button>
           </div>
-
         </form>
       </div>
     </div>

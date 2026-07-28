@@ -2,12 +2,13 @@ const { supabase } = require('../db');
 const { notifyLowStock } = require('../services/socketService');
 const { enqueueReorderJob } = require('../services/queueService');
 const { logAudit } = require('../services/auditService');
+const { sendVendorLowStockEmail } = require('../services/emailService');
 
 const HIGH_VALUE_THRESHOLD = parseFloat(process.env.HIGH_VALUE_THRESHOLD || '500.00');
 
 async function checkAndTriggerLowStock(product, ipAddress = '127.0.0.1') {
   const available = parseInt(product.available_quantity, 10);
-  const threshold = parseInt(product.low_stock_threshold, 10);
+  const threshold = parseInt(product.threshold_limit ?? product.low_stock_threshold, 10);
 
   if (available < threshold) {
     console.log(`🚨 LOW STOCK DETECTED for "${product.name}" (SKU: ${product.sku}). Current: ${available}, Threshold: ${threshold}`);
@@ -48,6 +49,7 @@ async function checkAndTriggerLowStock(product, ipAddress = '127.0.0.1') {
     const createdReorder = insertedRows[0];
 
     notifyLowStock(product, createdReorder);
+    await sendVendorLowStockEmail(product.vendor, product, available, threshold);
 
     logAudit(
       'LOW_STOCK_REORDER_TRIGGERED',
@@ -71,7 +73,7 @@ exports.getAllProducts = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, vendor:vendors(id, name, email, phone)')
       .order('id', { ascending: false });
 
     if (error) throw error;
@@ -86,7 +88,7 @@ exports.getProductById = async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, vendor:vendors(id, name, email, phone)')
       .eq('id', id)
       .single();
 
@@ -99,7 +101,10 @@ exports.getProductById = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    const { name, sku, available_quantity, low_stock_threshold, cost_price, supplier_name, category } = req.body;
+    const {
+      name, sku, available_quantity, low_stock_threshold,
+      cost_price, supplier_name, category, vendor_id, threshold_limit
+    } = req.body;
 
     if (!name || !sku || available_quantity === undefined || low_stock_threshold === undefined || cost_price === undefined) {
       return res.status(400).json({
@@ -118,6 +123,18 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ success: false, error: `Product with SKU "${sku}" already exists.` });
     }
 
+    // Validate vendor_id if provided
+    if (vendor_id) {
+      const { data: vendorExists } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('id', vendor_id)
+        .maybeSingle();
+      if (!vendorExists) {
+        return res.status(400).json({ success: false, error: `Vendor with ID "${vendor_id}" does not exist.` });
+      }
+    }
+
     const { data: insertedRows, error: insertErr } = await supabase
       .from('products')
       .insert([{
@@ -125,11 +142,13 @@ exports.createProduct = async (req, res) => {
         sku: sku.trim().toUpperCase(),
         available_quantity: parseInt(available_quantity, 10),
         low_stock_threshold: parseInt(low_stock_threshold, 10),
+        threshold_limit: threshold_limit !== undefined ? parseInt(threshold_limit, 10) : parseInt(low_stock_threshold, 10),
         cost_price: parseFloat(cost_price),
         supplier_name: supplier_name ? supplier_name.trim() : 'Global Supplies Co.',
-        category: category ? category.trim() : 'General'
+        category: category ? category.trim() : 'General',
+        vendor_id: vendor_id ? parseInt(vendor_id, 10) : null
       }])
-      .select();
+      .select('*, vendor:vendors(id, name, email, phone)');
 
     if (insertErr) throw insertErr;
     const newProduct = insertedRows[0];
@@ -147,7 +166,10 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, sku, available_quantity, low_stock_threshold, cost_price, supplier_name, category } = req.body;
+    const {
+      name, sku, available_quantity, low_stock_threshold,
+      cost_price, supplier_name, category, vendor_id, threshold_limit
+    } = req.body;
 
     const { data: existing, error: fetchErr } = await supabase
       .from('products')
@@ -157,6 +179,18 @@ exports.updateProduct = async (req, res) => {
 
     if (fetchErr || !existing) return res.status(404).json({ success: false, error: 'Product not found' });
 
+    // Validate vendor_id if provided and not null
+    if (vendor_id !== undefined && vendor_id !== null && vendor_id !== '') {
+      const { data: vendorExists } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('id', vendor_id)
+        .maybeSingle();
+      if (!vendorExists) {
+        return res.status(400).json({ success: false, error: `Vendor with ID "${vendor_id}" does not exist.` });
+      }
+    }
+
     const { data: updatedRows, error: updateErr } = await supabase
       .from('products')
       .update({
@@ -164,13 +198,15 @@ exports.updateProduct = async (req, res) => {
         sku: sku !== undefined ? sku.trim().toUpperCase() : existing.sku,
         available_quantity: available_quantity !== undefined ? parseInt(available_quantity, 10) : existing.available_quantity,
         low_stock_threshold: low_stock_threshold !== undefined ? parseInt(low_stock_threshold, 10) : existing.low_stock_threshold,
+        threshold_limit: threshold_limit !== undefined ? parseInt(threshold_limit, 10) : existing.threshold_limit,
         cost_price: cost_price !== undefined ? parseFloat(cost_price) : existing.cost_price,
         supplier_name: supplier_name !== undefined ? supplier_name.trim() : existing.supplier_name,
         category: category !== undefined ? category.trim() : existing.category,
+        vendor_id: vendor_id !== undefined ? (vendor_id ? parseInt(vendor_id, 10) : null) : existing.vendor_id,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select();
+      .select('*, vendor:vendors(id, name, email, phone)');
 
     if (updateErr) throw updateErr;
     const updatedProduct = updatedRows[0];
@@ -217,7 +253,7 @@ exports.updateStockQuantity = async (req, res) => {
       .from('products')
       .update({ available_quantity: newQuantity, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select();
+      .select('*, vendor:vendors(id, name, email, phone)');
 
     if (updateErr) throw updateErr;
     const updatedProduct = updatedRows[0];
@@ -261,5 +297,34 @@ exports.deleteProduct = async (req, res) => {
     res.json({ success: true, message: `Product "${existing.name}" deleted successfully` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * GET /api/products/reorder-alerts
+ * Returns products where available_quantity <= threshold_limit (and threshold_limit > 0)
+ */
+exports.getProductsNeedingReorder = async (req, res) => {
+  try {
+    const { data: allProducts, error } = await supabase
+      .from('products')
+      .select('*, vendor:vendors(id, name, email, phone)')
+      .gt('threshold_limit', 0)
+      .order('available_quantity', { ascending: true });
+
+    if (error) throw error;
+
+    // Filter: available_quantity <= threshold_limit
+    const productsNeedingReorder = allProducts.filter(
+      p => parseInt(p.available_quantity, 10) <= parseInt(p.threshold_limit, 10)
+    );
+
+    res.json({
+      success: true,
+      count: productsNeedingReorder.length,
+      data: productsNeedingReorder
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to retrieve reorder alerts' });
   }
 };

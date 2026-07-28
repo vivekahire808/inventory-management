@@ -10,6 +10,8 @@ export default function Navbar({ activeTab, setActiveTab }) {
   const pageTitle = {
     dashboard: 'Inventory Dashboard',
     inventory: 'Inventory Dashboard',
+    vendors: 'Vendor Management',
+    'reorder-alerts': 'Reorder Alerts',
     reorders: 'Supplier Reorders',
     notifications: 'Notifications',
     audit: 'Audit Logs'

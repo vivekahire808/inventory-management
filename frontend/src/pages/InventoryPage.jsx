@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Search, RefreshCw, X } from 'lucide-react';
+import { Plus, Search, RefreshCw, Store, Layers } from 'lucide-react';
 import ProductModal from '../components/ProductModal';
 import StockUpdateModal from '../components/StockUpdateModal';
 import { createProduct, updateProduct, deleteProduct, updateStock } from '../services/api';
 
-export default function InventoryPage({ products = [], fetchProducts, fetchReorders }) {
+export default function InventoryPage({ products = [], vendors = [], fetchProducts, fetchReorders, fetchVendors }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockUpdatingProduct, setStockUpdatingProduct] = useState(null);
 
-  const filteredProducts = products.filter(p =>
+  const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.vendor?.name && p.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleCreateOrUpdateProduct = async (formData) => {
@@ -23,7 +24,8 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
       await createProduct(formData);
     }
     await fetchProducts();
-    await fetchReorders();
+    if (fetchReorders) await fetchReorders();
+    if (fetchVendors) await fetchVendors();
   };
 
   const handleDeleteProduct = async (id, name) => {
@@ -31,7 +33,7 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
       try {
         await deleteProduct(id);
         await fetchProducts();
-        await fetchReorders();
+        if (fetchReorders) await fetchReorders();
       } catch (err) {
         alert(err.response?.data?.error || 'Failed to delete product');
       }
@@ -41,7 +43,7 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
   const handleStockUpdateSave = async (id, payload) => {
     await updateStock(id, payload);
     await fetchProducts();
-    await fetchReorders();
+    if (fetchReorders) await fetchReorders();
   };
 
   return (
@@ -50,7 +52,7 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
       <div className="page-title-row">
         <h2 className="page-title">Inventory</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { fetchProducts(); fetchReorders(); }} className="btn btn-outline btn-sm">
+          <button onClick={() => { fetchProducts(); if (fetchReorders) fetchReorders(); }} className="btn btn-outline btn-sm">
             <RefreshCw size={14} /> Refresh
           </button>
           <button onClick={() => { setEditingProduct(null); setIsProductModalOpen(true); }} className="btn btn-primary btn-sm">
@@ -66,9 +68,9 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
           <input
             type="text"
             className="form-input"
-            placeholder="Search by name or SKU..."
+            placeholder="Search by name, SKU, or vendor..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -85,6 +87,7 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
                 <th>Quantity</th>
                 <th>Threshold</th>
                 <th>Price</th>
+                <th>Vendor</th>
                 <th>Supplier</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
@@ -92,12 +95,12 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                     No products found.
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map(p => (
+                filteredProducts.map((p) => (
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{p.sku}</td>
@@ -105,16 +108,33 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
                       <span style={{
                         fontWeight: 700,
                         color: p.available_quantity === 0 ? '#f87171'
-                          : p.available_quantity < p.low_stock_threshold ? '#fbbf24'
+                          : p.available_quantity <= (p.threshold_limit ?? p.low_stock_threshold) ? '#fbbf24'
                           : 'var(--text-primary)'
                       }}>
                         {p.available_quantity}
                       </span>
                     </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{p.low_stock_threshold}</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>{p.threshold_limit ?? p.low_stock_threshold}</td>
                     <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>₹{parseFloat(p.cost_price).toFixed(2)}</td>
+                    <td>
+                      {p.vendor ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-primary)', fontWeight: 500 }}>
+                          <Store size={13} style={{ color: 'var(--accent-indigo)' }} />
+                          {p.vendor.name}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
+                      )}
+                    </td>
                     <td style={{ color: 'var(--text-secondary)' }}>{p.supplier_name}</td>
                     <td className="actions-cell">
+                      <button
+                        onClick={() => { setStockUpdatingProduct(p); setIsStockModalOpen(true); }}
+                        className="btn btn-warning btn-sm"
+                        title="Update Stock Quantity"
+                      >
+                        <Layers size={13} /> Stock
+                      </button>
                       <button
                         onClick={() => { setEditingProduct(p); setIsProductModalOpen(true); }}
                         className="btn btn-primary btn-sm"
@@ -142,6 +162,7 @@ export default function InventoryPage({ products = [], fetchProducts, fetchReord
         onClose={() => setIsProductModalOpen(false)}
         onSave={handleCreateOrUpdateProduct}
         product={editingProduct}
+        vendors={vendors}
       />
       <StockUpdateModal
         isOpen={isStockModalOpen}

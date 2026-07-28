@@ -7,21 +7,22 @@ exports.exportProductsCSV = async (req, res) => {
   try {
     const { data: products, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, vendor:vendors(name)')
       .order('id', { ascending: true });
 
     if (error) throw error;
 
-    let csvContent = 'ID,Product Name,SKU,Available Quantity,Low Stock Limit,Cost Price ($),Supplier Name,Category,Created Date\n';
+    let csvContent = 'ID,Product Name,SKU,Available Quantity,Low Stock Limit,Threshold Limit,Cost Price (₹),Supplier Name,Vendor Name,Category,Created Date\n';
 
     products.forEach((p) => {
       const name = `"${(p.name || '').replace(/"/g, '""')}"`;
       const sku = `"${(p.sku || '').replace(/"/g, '""')}"`;
       const supplier = `"${(p.supplier_name || '').replace(/"/g, '""')}"`;
+      const vendorName = `"${(p.vendor?.name || '').replace(/"/g, '""')}"`;
       const category = `"${(p.category || 'General').replace(/"/g, '""')}"`;
       const cost = parseFloat(p.cost_price || 0).toFixed(2);
       const created = `"${new Date(p.created_at).toISOString()}"`;
-      csvContent += `${p.id},${name},${sku},${p.available_quantity},${p.low_stock_threshold},${cost},${supplier},${category},${created}\n`;
+      csvContent += `${p.id},${name},${sku},${p.available_quantity},${p.low_stock_threshold},${p.threshold_limit || 0},${cost},${supplier},${vendorName},${category},${created}\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv');

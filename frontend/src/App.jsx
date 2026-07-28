@@ -4,16 +4,19 @@ import Navbar from './components/Navbar';
 import MetricCards from './components/MetricCards';
 import NotificationToast from './components/NotificationToast';
 import InventoryPage from './pages/InventoryPage';
+import VendorsPage from './pages/VendorsPage';
+import ReorderAlertsPage from './pages/ReorderAlertsPage';
 import ReordersPage from './pages/ReordersPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import { SocketProvider } from './context/SocketContext';
-import { getProducts, getReorders } from './services/api';
+import { getProducts, getReorders, getVendors } from './services/api';
 
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState('inventory');
   const [products, setProducts] = useState([]);
   const [reorders, setReorders] = useState([]);
+  const [vendors, setVendors] = useState([]);
 
   const fetchProductsData = async () => {
     try {
@@ -33,12 +36,23 @@ function DashboardContent() {
     }
   };
 
+  const fetchVendorsData = async () => {
+    try {
+      const res = await getVendors();
+      if (res.data.success) setVendors(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch vendors:', err);
+    }
+  };
+
   useEffect(() => {
     fetchProductsData();
     fetchReordersData();
+    fetchVendorsData();
   }, []);
 
   const lowStockCount = products.filter(p => p.available_quantity < p.low_stock_threshold).length;
+  const reorderAlertCount = products.filter(p => p.available_quantity <= (p.threshold_limit ?? p.low_stock_threshold)).length;
   const pendingApprovalCount = reorders.filter(r => r.reorder_status === 'PENDING_APPROVAL').length;
 
   return (
@@ -52,6 +66,7 @@ function DashboardContent() {
         setActiveTab={setActiveTab}
         pendingApprovalCount={pendingApprovalCount}
         lowStockCount={lowStockCount}
+        reorderAlertCount={reorderAlertCount}
       />
 
       {/* Main Area */}
@@ -64,16 +79,43 @@ function DashboardContent() {
           {/* Dashboard view shows metrics + inventory */}
           {activeTab === 'dashboard' && (
             <>
-              <MetricCards products={products} reorders={reorders} />
-              <InventoryPage products={products} fetchProducts={fetchProductsData} fetchReorders={fetchReordersData} />
+              <MetricCards products={products} reorders={reorders} vendors={vendors} />
+              <InventoryPage
+                products={products}
+                vendors={vendors}
+                fetchProducts={fetchProductsData}
+                fetchReorders={fetchReordersData}
+                fetchVendors={fetchVendorsData}
+              />
             </>
           )}
 
           {activeTab === 'inventory' && (
             <>
-              <MetricCards products={products} reorders={reorders} />
-              <InventoryPage products={products} fetchProducts={fetchProductsData} fetchReorders={fetchReordersData} />
+              <MetricCards products={products} reorders={reorders} vendors={vendors} />
+              <InventoryPage
+                products={products}
+                vendors={vendors}
+                fetchProducts={fetchProductsData}
+                fetchReorders={fetchReordersData}
+                fetchVendors={fetchVendorsData}
+              />
             </>
+          )}
+
+          {activeTab === 'vendors' && (
+            <VendorsPage
+              vendors={vendors}
+              fetchVendors={fetchVendorsData}
+              fetchProducts={fetchProductsData}
+            />
+          )}
+
+          {activeTab === 'reorder-alerts' && (
+            <ReorderAlertsPage
+              fetchReorders={fetchReordersData}
+              fetchProducts={fetchProductsData}
+            />
           )}
 
           {activeTab === 'reorders' && (

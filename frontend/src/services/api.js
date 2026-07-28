@@ -18,6 +18,14 @@ export const createProduct = (productData) => api.post('/products', productData)
 export const updateProduct = (id, productData) => api.put(`/products/${id}`, productData);
 export const updateStock = (id, stockData) => api.patch(`/products/${id}/stock`, stockData);
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
+export const getReorderAlerts = () => api.get('/products/reorder-alerts');
+
+// Vendor API
+export const getVendors = () => api.get('/vendors');
+export const getVendorById = (id) => api.get(`/vendors/${id}`);
+export const createVendor = (vendorData) => api.post('/vendors', vendorData);
+export const updateVendor = (id, vendorData) => api.put(`/vendors/${id}`, vendorData);
+export const deleteVendor = (id) => api.delete(`/vendors/${id}`);
 
 // Supplier Reorder API
 export const getReorders = () => api.get('/reorders');
